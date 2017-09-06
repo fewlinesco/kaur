@@ -1,16 +1,16 @@
 defmodule Kaur.ResultTuple do
-  @moduledoc ~S"""
+  @moduledoc """
   Utilities for working with "result tuples"
 
   * `{:ok, value}`
   * `{:error, reason}`
   """
-
+  
   @type ok_tuple :: {:ok, any}
   @type error_tuple :: {:error, any}
   @type result_tuple :: ok_tuple | error_tuple
 
-  @doc ~S"""
+  @doc """
   Calls the next function only if we have an ok tuple. Otherwise we skip the call and
   returns the error tuple
 
@@ -26,7 +26,29 @@ defmodule Kaur.ResultTuple do
   def and_then({:ok, data}, function), do: function.(data)
   def and_then({:error, _} = error, _function), do: error
 
-  @doc ~S"""
+  @doc """
+  Checks if a `result_tuple` is an error
+
+  ## Examples
+    iex> Enum.map([{:ok, 1}, {:error, 2}], &Kaur.ResultTuple.error?/1)
+    [false, true]
+  """
+  @spec error?(result_tuple) :: boolean
+  def error?({:error, _}), do: true
+  def error?({:ok, _}), do: false
+
+  @doc """
+  Checks if a `result_tuple` is ok
+
+  ## Examples
+    iex> Enum.map([{:ok, 1}, {:error, 2}], &Kaur.ResultTuple.ok?/1)
+    [true, false]
+  """
+  @spec ok?(result_tuple) :: boolean
+  def ok?({:ok, _}), do: true
+  def ok?({:error, _}), do: false
+  
+  @doc """
   Transforms a list of result tuple to a result tuple containing either
   the first error tuple or an ok tuple containing the list of values.
 
@@ -38,9 +60,18 @@ defmodule Kaur.ResultTuple do
     {:error, "oops"}
   """
   @spec sequence([result_tuple]) :: ({:ok, [any()]}|{:error, any()})
-  def sequence(list), do: do_sequence(list, [])
+  def sequence(list) do
+    case Enum.reduce_while(list, [], &do_sequence/2) do
+      {:error, _} = error -> error
+      result -> {:ok, Enum.reverse result}
+    end
+  end
 
-  defp do_sequence([], new_list), do: {:ok, Enum.reverse(new_list)}
-  defp do_sequence([{:ok, value} | nexts], new_list), do: do_sequence(nexts, [value | new_list])
-  defp do_sequence([{:error, _reason} = error | _nexts], _new_list), do: error
+  defp do_sequence(element, elements) do
+    case element do
+      {:ok, value} -> {:cont, [value | elements]}
+      {:error, _} -> {:halt, element}
+    end
+  end
+
 end
