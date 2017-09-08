@@ -7,6 +7,7 @@ defmodule Kaur.Mixfile do
      elixir: "~> 1.5",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
+     description: "A bunch of helper functions we use in different projects.",
      deps: deps()]
   end
 
@@ -15,6 +16,7 @@ defmodule Kaur.Mixfile do
   end
 
   defp deps do
-    [{:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false}]
+    [{:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
+     {:ex_doc, "~> 0.16", only: [:dev], runtime: false}]
   end
 end
