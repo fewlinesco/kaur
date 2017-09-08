@@ -13,6 +13,9 @@ jobs:
       - restore_cache:
           keys:
             - v1-language-deps-{{ checksum ".tool-versions" }}
+      - restore_cache:
+          keys:
+            - v1-plt-cache-{{ checksum "mix.lock" }}
       - run: if ! asdf --version; then git clone https://github.com/asdf-vm/asdf.git ~/.asdf; fi
       - run: if ! asdf plugin-list | grep erlang; then asdf plugin-add erlang https://github.com/asdf-vm/asdf-erlang.git; fi
       - run: if ! asdf plugin-list | grep elixir; then asdf plugin-add elixir https://github.com/asdf-vm/asdf-elixir.git; fi
@@ -25,3 +28,9 @@ jobs:
       - run: mix local.rebar --force
       - run: mix deps.get
       - run: mix test
+      - run: mix dialyzer
+      - save_cache:
+          key: v1-plt-cache-{{ checksum "mix.lock" }}
+          paths:
+            - _build
+            - ~/.mix
