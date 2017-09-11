@@ -16,28 +16,79 @@ defmodule Kaur.ResultTuple do
 
   ## Examples
 
-    iex> business_logic = fn x -> {:ok, x * 2} end
-    ...> {:ok, 21} |> Kaur.ResultTuple.and_then(business_logic)
-    {:ok, 42}
+      iex> business_logic = fn x -> Kaur.ResultTuple.ok(x * 2) end
+      ...> 21 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.and_then(business_logic)
+      {:ok, 42}
 
-    iex> business_logic = fn x -> {:ok, x * 2} end
-    ...> {:error, "oops"} |> Kaur.ResultTuple.and_then(business_logic)
-    {:error, "oops"}
+      iex> business_logic = fn x -> Kaur.ResultTuple.ok(x * 2) end
+      ...> "oops" |> Kaur.ResultTuple.error |> Kaur.ResultTuple.and_then(business_logic)
+      {:error, "oops"}
   """
   @spec and_then(result_tuple, (any -> result_tuple)) :: result_tuple
   def and_then({:ok, data}, function), do: function.(data)
   def and_then({:error, _} = error, _function), do: error
 
   @doc """
+  Calls the first function if we have an error tuple, and the second one if we have an ok
+  tuple.
+
+  ## Examples
+
+      iex> on_ok = fn x -> "X is \#{x}" end
+      ...> on_error = fn e -> "Error: \#{e}" end
+      ...> 42 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.either(on_error, on_ok)
+      "X is 42"
+
+      iex> on_ok = fn x -> "X is \#{x}" end
+      ...> on_error = fn e -> "Error: \#{e}" end
+      ...> "oops" |> Kaur.ResultTuple.error |> Kaur.ResultTuple.either(on_error, on_ok)
+      "Error: oops"
+  """
+  @spec either(result_tuple, (any -> any), (any -> any)) :: any
+  def either({:ok, data}, _, on_ok), do: on_ok.(data)
+  def either({:error, error}, on_error, _), do: on_error.(error)
+
+  @doc """
+  Create a new error result tuple
+
+  ## Examples
+
+      iex> Kaur.ResultTuple.error("oops")
+      {:error, "oops"}
+  """
+  @spec error(any) :: error_tuple
+  def error(value), do: {:error, value}
+
+  @doc """
   Checks if a `result_tuple` is an error
 
   ## Examples
-    iex> Enum.map([{:ok, 1}, {:error, 2}], &Kaur.ResultTuple.error?/1)
-    [false, true]
+
+      iex> 1 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.error?
+      false
+
+      iex> 2 |>Kaur.ResultTuple.error |> Kaur.ResultTuple.error?
+      true
   """
   @spec error?(result_tuple) :: boolean
   def error?({:error, _}), do: true
   def error?({:ok, _}), do: false
+
+  @doc """
+  Promotes any value to a result tuple. We excludes `nil` for the
+  ok tuples.
+
+  ## Examples
+
+      iex> Kaur.ResultTuple.from_value(nil)
+      {:error, :no_value}
+
+      iex> Kaur.ResultTuple.from_value(42)
+      {:ok, 42}
+  """
+  @spec from_value(any) :: result_tuple
+  def from_value(nil), do: error(:no_value)
+  def from_value(value), do: ok(value)
 
   @doc """
   Calls the next function only if we have an ok tuple. The function unwraps the value
@@ -45,16 +96,16 @@ defmodule Kaur.ResultTuple do
 
   ## Examples
 
-    iex> business_logic = fn x -> x * 2 end
-    ...> {:ok, 21} |> Kaur.ResultTuple.map(business_logic)
-    {:ok, 42}
+      iex> business_logic = fn x -> x * 2 end
+      ...> 21 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.map(business_logic)
+      {:ok, 42}
 
-    iex> business_logic = fn x -> x * 2 end
-    ...> {:error, "oops"} |> Kaur.ResultTuple.map(business_logic)
-    {:error, "oops"}
+      iex> business_logic = fn x -> x * 2 end
+      ...> "oops" |> Kaur.ResultTuple.error |> Kaur.ResultTuple.map(business_logic)
+      {:error, "oops"}
   """
   @spec map(result_tuple, (any -> any)) :: result_tuple
-  def map({:ok, data}, function), do: {:ok, function.(data)}
+  def map({:ok, data}, function), do: ok(function.(data))
   def map({:error, _} = error, _function), do: error
 
   @doc """
@@ -63,24 +114,39 @@ defmodule Kaur.ResultTuple do
 
   ## Examples
 
-    iex> better_error = fn _ -> "A better error message" end
-    ...> {:ok, 42} |> Kaur.ResultTuple.map_error(better_error)
-    {:ok, 42}
+      iex> better_error = fn _ -> "A better error message" end
+      ...> 42 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.map_error(better_error)
+      {:ok, 42}
 
-    iex> better_error = fn _ -> "A better error message" end
-    ...> {:error, "oops"} |> Kaur.ResultTuple.map_error(better_error)
-    {:error, "A better error message"}
+      iex> better_error = fn _ -> "A better error message" end
+      ...> "oops" |> Kaur.ResultTuple.error |> Kaur.ResultTuple.map_error(better_error)
+      {:error, "A better error message"}
   """
   @spec map_error(result_tuple, (any -> any)) :: result_tuple
   def map_error({:ok, _} = data, _function), do: data
-  def map_error({:error, _} = error, function), do: or_else(error, fn x -> {:error, function.(x)} end)
+  def map_error({:error, _} = error, function), do: or_else(error, fn x -> error(function.(x)) end)
+
+  @doc """
+  Create a new ok result tuple
+
+  ## Examples
+
+      iex> Kaur.ResultTuple.ok(42)
+      {:ok, 42}
+  """
+  @spec ok(any) :: ok_tuple
+  def ok(value), do: {:ok, value}
 
   @doc """
   Checks if a `result_tuple` is ok
 
   ## Examples
-    iex> Enum.map([{:ok, 1}, {:error, 2}], &Kaur.ResultTuple.ok?/1)
-    [true, false]
+
+      iex> 1 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.ok?
+      true
+
+      iex> 2 |> Kaur.ResultTuple.error |>Kaur.ResultTuple.ok?
+      false
   """
   @spec ok?(result_tuple) :: boolean
   def ok?({:ok, _}), do: true
@@ -92,17 +158,17 @@ defmodule Kaur.ResultTuple do
 
   ## Examples
 
-    iex> business_logic = fn _ -> {:error, "a better error message"} end
-    ...> {:ok, 42} |> Kaur.ResultTuple.or_else(business_logic)
-    {:ok, 42}
+      iex> business_logic = fn _ -> {:error, "a better error message"} end
+      ...> {:ok, 42} |> Kaur.ResultTuple.or_else(business_logic)
+      {:ok, 42}
 
-    iex> business_logic = fn _ -> {:error, "a better error message"} end
-    ...> {:error, "oops"} |> Kaur.ResultTuple.or_else(business_logic)
-    {:error, "a better error message"}
+      iex> business_logic = fn _ -> {:error, "a better error message"} end
+      ...> {:error, "oops"} |> Kaur.ResultTuple.or_else(business_logic)
+      {:error, "a better error message"}
 
-    iex> default_value = fn _ -> {:ok, []} end
-    ...> {:error, "oops"} |> Kaur.ResultTuple.or_else(default_value)
-    {:ok, []}
+      iex> default_value = fn _ -> {:ok, []} end
+      ...> {:error, "oops"} |> Kaur.ResultTuple.or_else(default_value)
+      {:ok, []}
   """
   @spec or_else(result_tuple, (any -> result_tuple)) :: result_tuple
   def or_else({:ok, _} = data, _function), do: data
@@ -114,17 +180,17 @@ defmodule Kaur.ResultTuple do
 
   ### Examples
 
-    iex> Kaur.ResultTuple.sequence([{:ok, 42}, {:ok, 1337}])
-    {:ok, [42, 1337]}
+      iex> Kaur.ResultTuple.sequence([Kaur.ResultTuple.ok(42), Kaur.ResultTuple.ok(1337)])
+      {:ok, [42, 1337]}
 
-    iex> Kaur.ResultTuple.sequence([{:ok, 42}, {:error, "oops"}, {:ok, 1337}])
-    {:error, "oops"}
+      iex> Kaur.ResultTuple.sequence([Kaur.ResultTuple.ok(42), Kaur.ResultTuple.error("oops"), Kaur.ResultTuple.ok(1337)])
+      {:error, "oops"}
   """
   @spec sequence([result_tuple]) :: ({:ok, [any()]}|{:error, any()})
   def sequence(list) do
     case Enum.reduce_while(list, [], &do_sequence/2) do
       {:error, _} = error -> error
-      result -> {:ok, Enum.reverse result}
+      result -> ok(Enum.reverse result)
     end
   end
 
@@ -134,11 +200,11 @@ defmodule Kaur.ResultTuple do
 
   ### Examples
 
-    iex> Kaur.ResultTuple.with_default({:ok, 42}, 1337)
-    42
+      iex> 42 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.with_default(1337)
+      42
 
-    iex> Kaur.ResultTuple.with_default({:error, "oops"}, 1337)
-    1337
+      iex> "oops" |> Kaur.ResultTuple.error |> Kaur.ResultTuple.with_default(1337)
+      1337
   """
   @spec with_default(result_tuple, any) :: any
   def with_default({:ok, data}, _default_data), do: data
