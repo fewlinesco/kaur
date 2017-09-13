@@ -1,4 +1,4 @@
-defmodule Kaur.ResultTuple do
+defmodule Kaur.Result do
   @moduledoc """
   Utilities for working with "result tuples"
 
@@ -16,12 +16,12 @@ defmodule Kaur.ResultTuple do
 
   ## Examples
 
-      iex> business_logic = fn x -> Kaur.ResultTuple.ok(x * 2) end
-      ...> 21 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.and_then(business_logic)
+      iex> business_logic = fn x -> Kaur.Result.ok(x * 2) end
+      ...> 21 |> Kaur.Result.ok |> Kaur.Result.and_then(business_logic)
       {:ok, 42}
 
-      iex> business_logic = fn x -> Kaur.ResultTuple.ok(x * 2) end
-      ...> "oops" |> Kaur.ResultTuple.error |> Kaur.ResultTuple.and_then(business_logic)
+      iex> business_logic = fn x -> Kaur.Result.ok(x * 2) end
+      ...> "oops" |> Kaur.Result.error |> Kaur.Result.and_then(business_logic)
       {:error, "oops"}
   """
   @spec and_then(result_tuple, (any -> result_tuple)) :: result_tuple
@@ -36,12 +36,12 @@ defmodule Kaur.ResultTuple do
 
       iex> on_ok = fn x -> "X is \#{x}" end
       ...> on_error = fn e -> "Error: \#{e}" end
-      ...> 42 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.either(on_error, on_ok)
+      ...> 42 |> Kaur.Result.ok |> Kaur.Result.either(on_error, on_ok)
       "X is 42"
 
       iex> on_ok = fn x -> "X is \#{x}" end
       ...> on_error = fn e -> "Error: \#{e}" end
-      ...> "oops" |> Kaur.ResultTuple.error |> Kaur.ResultTuple.either(on_error, on_ok)
+      ...> "oops" |> Kaur.Result.error |> Kaur.Result.either(on_error, on_ok)
       "Error: oops"
   """
   @spec either(result_tuple, (any -> any), (any -> any)) :: any
@@ -53,7 +53,7 @@ defmodule Kaur.ResultTuple do
 
   ## Examples
 
-      iex> Kaur.ResultTuple.error("oops")
+      iex> Kaur.Result.error("oops")
       {:error, "oops"}
   """
   @spec error(any) :: error_tuple
@@ -64,10 +64,10 @@ defmodule Kaur.ResultTuple do
 
   ## Examples
 
-      iex> 1 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.error?
+      iex> 1 |> Kaur.Result.ok |> Kaur.Result.error?
       false
 
-      iex> 2 |>Kaur.ResultTuple.error |> Kaur.ResultTuple.error?
+      iex> 2 |>Kaur.Result.error |> Kaur.Result.error?
       true
   """
   @spec error?(result_tuple) :: boolean
@@ -80,10 +80,10 @@ defmodule Kaur.ResultTuple do
 
   ## Examples
 
-      iex> Kaur.ResultTuple.from_value(nil)
+      iex> Kaur.Result.from_value(nil)
       {:error, :no_value}
 
-      iex> Kaur.ResultTuple.from_value(42)
+      iex> Kaur.Result.from_value(42)
       {:ok, 42}
   """
   @spec from_value(any) :: result_tuple
@@ -97,11 +97,11 @@ defmodule Kaur.ResultTuple do
   ## Examples
 
       iex> business_logic = fn x -> x * 2 end
-      ...> 21 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.map(business_logic)
+      ...> 21 |> Kaur.Result.ok |> Kaur.Result.map(business_logic)
       {:ok, 42}
 
       iex> business_logic = fn x -> x * 2 end
-      ...> "oops" |> Kaur.ResultTuple.error |> Kaur.ResultTuple.map(business_logic)
+      ...> "oops" |> Kaur.Result.error |> Kaur.Result.map(business_logic)
       {:error, "oops"}
   """
   @spec map(result_tuple, (any -> any)) :: result_tuple
@@ -115,11 +115,11 @@ defmodule Kaur.ResultTuple do
   ## Examples
 
       iex> better_error = fn _ -> "A better error message" end
-      ...> 42 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.map_error(better_error)
+      ...> 42 |> Kaur.Result.ok |> Kaur.Result.map_error(better_error)
       {:ok, 42}
 
       iex> better_error = fn _ -> "A better error message" end
-      ...> "oops" |> Kaur.ResultTuple.error |> Kaur.ResultTuple.map_error(better_error)
+      ...> "oops" |> Kaur.Result.error |> Kaur.Result.map_error(better_error)
       {:error, "A better error message"}
   """
   @spec map_error(result_tuple, (any -> any)) :: result_tuple
@@ -131,7 +131,7 @@ defmodule Kaur.ResultTuple do
 
   ## Examples
 
-      iex> Kaur.ResultTuple.ok(42)
+      iex> Kaur.Result.ok(42)
       {:ok, 42}
   """
   @spec ok(any) :: ok_tuple
@@ -142,10 +142,10 @@ defmodule Kaur.ResultTuple do
 
   ## Examples
 
-      iex> 1 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.ok?
+      iex> 1 |> Kaur.Result.ok |> Kaur.Result.ok?
       true
 
-      iex> 2 |> Kaur.ResultTuple.error |>Kaur.ResultTuple.ok?
+      iex> 2 |> Kaur.Result.error |>Kaur.Result.ok?
       false
   """
   @spec ok?(result_tuple) :: boolean
@@ -159,15 +159,15 @@ defmodule Kaur.ResultTuple do
   ## Examples
 
       iex> business_logic = fn _ -> {:error, "a better error message"} end
-      ...> {:ok, 42} |> Kaur.ResultTuple.or_else(business_logic)
+      ...> {:ok, 42} |> Kaur.Result.or_else(business_logic)
       {:ok, 42}
 
       iex> business_logic = fn _ -> {:error, "a better error message"} end
-      ...> {:error, "oops"} |> Kaur.ResultTuple.or_else(business_logic)
+      ...> {:error, "oops"} |> Kaur.Result.or_else(business_logic)
       {:error, "a better error message"}
 
       iex> default_value = fn _ -> {:ok, []} end
-      ...> {:error, "oops"} |> Kaur.ResultTuple.or_else(default_value)
+      ...> {:error, "oops"} |> Kaur.Result.or_else(default_value)
       {:ok, []}
   """
   @spec or_else(result_tuple, (any -> result_tuple)) :: result_tuple
@@ -180,10 +180,10 @@ defmodule Kaur.ResultTuple do
 
   ### Examples
 
-      iex> Kaur.ResultTuple.sequence([Kaur.ResultTuple.ok(42), Kaur.ResultTuple.ok(1337)])
+      iex> Kaur.Result.sequence([Kaur.Result.ok(42), Kaur.Result.ok(1337)])
       {:ok, [42, 1337]}
 
-      iex> Kaur.ResultTuple.sequence([Kaur.ResultTuple.ok(42), Kaur.ResultTuple.error("oops"), Kaur.ResultTuple.ok(1337)])
+      iex> Kaur.Result.sequence([Kaur.Result.ok(42), Kaur.Result.error("oops"), Kaur.Result.ok(1337)])
       {:error, "oops"}
   """
   @spec sequence([result_tuple]) :: ({:ok, [any()]}|{:error, any()})
@@ -200,10 +200,10 @@ defmodule Kaur.ResultTuple do
 
   ### Examples
 
-      iex> 42 |> Kaur.ResultTuple.ok |> Kaur.ResultTuple.with_default(1337)
+      iex> 42 |> Kaur.Result.ok |> Kaur.Result.with_default(1337)
       42
 
-      iex> "oops" |> Kaur.ResultTuple.error |> Kaur.ResultTuple.with_default(1337)
+      iex> "oops" |> Kaur.Result.error |> Kaur.Result.with_default(1337)
       1337
   """
   @spec with_default(result_tuple, any) :: any

@@ -26,12 +26,12 @@ defmodule Kaur.Environment do
       iex> Kaur.Environment.read(:my_app, :something_else)
       {:error, :no_value}
   """
-  @spec read(:atom, :atom) :: Kaur.ResultTuple.result_tuple
+  @spec read(:atom, :atom) :: Kaur.Result.result_tuple
   def read(application, key) do
     application
     |> Application.get_env(key)
-    |> Kaur.ResultTuple.from_value
-    |> Kaur.ResultTuple.and_then(&load_environment_variable/1)
+    |> Kaur.Result.from_value
+    |> Kaur.Result.and_then(&load_environment_variable/1)
   end
 
   @doc """
@@ -54,27 +54,27 @@ defmodule Kaur.Environment do
       iex> Kaur.Environment.read(:my_app, :something_else)
       {:error, :no_value}
   """
-  @spec read(:atom, :atom, [:atom]) :: Kaur.ResultTuple.result_tuple
+  @spec read(:atom, :atom, [:atom]) :: Kaur.Result.result_tuple
   def read(application, key, sub_keys) do
     application
     |> Application.get_env(key)
-    |> Kaur.ResultTuple.from_value
-    |> Kaur.ResultTuple.and_then(&deep_get(&1, sub_keys))
-    |> Kaur.ResultTuple.and_then(&load_environment_variable/1)
+    |> Kaur.Result.from_value
+    |> Kaur.Result.and_then(&deep_get(&1, sub_keys))
+    |> Kaur.Result.and_then(&load_environment_variable/1)
   end
 
   defp load_environment_variable({:system, environment_variable}) do
     environment_variable
     |> System.get_env
-    |> Kaur.ResultTuple.from_value
+    |> Kaur.Result.from_value
   end
   defp load_environment_variable(value) do
-    Kaur.ResultTuple.from_value(value)
+    Kaur.Result.from_value(value)
   end
 
   defp deep_get(values, sub_keys) do
     values
     |> get_in(sub_keys)
-    |> Kaur.ResultTuple.from_value
+    |> Kaur.Result.from_value
   end
 end
