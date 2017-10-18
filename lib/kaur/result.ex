@@ -91,6 +91,31 @@ defmodule Kaur.Result do
   def from_value(value), do: ok(value)
 
   @doc """
+  Converts an `Ok` value to an `Error` value if the `predicate` is not valid.
+
+  ## Examples
+
+      iex> res = Kaur.Result.ok(10)
+      ...> Kaur.Result.keep_if(res, &(&1 > 5))
+      {:ok, 10}
+
+      iex> res = Kaur.Result.ok(10)
+      ...> Kaur.Result.keep_if(res, &(&1 > 10), "must be > of 10")
+      {:error, "must be > of 10"}
+
+      iex> res = Kaur.Result.error(:no_value)
+      ...> Kaur.Result.keep_if(res, &(&1 > 10), "must be > of 10")
+      {:error, :no_value}
+  """
+  @spec keep_if(result_tuple, (any -> boolean), any) :: result_tuple
+  def keep_if(result, predicate, error_message \\ :invalid)
+  def keep_if({:error, _} = error, _predicate, _error_message), do: error
+  def keep_if({:ok, value} = ok, predicate, error_message) do
+    if predicate.(value), do: ok, else: error(error_message)
+  end
+
+
+  @doc """
   Calls the next function only if we have an ok tuple. The function unwraps the value
   from the tuple, call the next function and wrap it back into an ok tuple.
 
@@ -173,6 +198,29 @@ defmodule Kaur.Result do
   @spec or_else(result_tuple, (any -> result_tuple)) :: result_tuple
   def or_else({:ok, _} = data, _function), do: data
   def or_else({:error, reason}, function), do: function.(reason)
+
+
+  @doc """
+  Converts an `Ok` value to an `Error` value if the `predicate` is valid.
+
+  ## Examples
+
+      iex> res = Kaur.Result.ok([])
+      ...> Kaur.Result.reject_if(res, &Enum.empty?/1)
+      {:error, :invalid}
+
+      iex> res = Kaur.Result.ok([1])
+      ...> Kaur.Result.reject_if(res, &Enum.empty?/1)
+      {:ok, [1]}
+
+      iex> res = Kaur.Result.ok([])
+      ...> Kaur.Result.reject_if(res, &Enum.empty?/1, "list cannot be empty")
+      {:error, "list cannot be empty"}
+  """
+  @spec reject_if(result_tuple, (any -> boolean), any) :: result_tuple
+  def reject_if(result, predicate, error_message \\ :invalid) do
+    keep_if(result, &(not predicate.(&1)), error_message)
+  end
 
   @doc """
   Transforms a list of result tuple to a result tuple containing either
