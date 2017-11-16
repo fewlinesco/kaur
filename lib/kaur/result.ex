@@ -114,7 +114,6 @@ defmodule Kaur.Result do
     if predicate.(value), do: ok, else: error(error_message)
   end
 
-
   @doc """
   Calls the next function only if we have an ok tuple. The function unwraps the value
   from the tuple, call the next function and wrap it back into an ok tuple.
@@ -198,7 +197,6 @@ defmodule Kaur.Result do
   @spec or_else(result_tuple, (any -> result_tuple)) :: result_tuple
   def or_else({:ok, _} = data, _function), do: data
   def or_else({:error, reason}, function), do: function.(reason)
-
 
   @doc """
   Converts an `Ok` value to an `Error` value if the `predicate` is valid.
