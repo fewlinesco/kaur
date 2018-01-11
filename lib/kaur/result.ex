@@ -5,10 +5,11 @@ defmodule Kaur.Result do
   * `{:ok, value}`
   * `{:error, reason}`
   """
-
-  @type ok_tuple :: {:ok, any}
+  @type typed_ok_tuple(type) :: {:ok, type}
+  @type ok_tuple :: typed_ok_tuple(any)
   @type error_tuple :: {:error, any}
-  @type result_tuple :: ok_tuple | error_tuple
+  @type typed_result_tuple(type) :: typed_ok_tuple(type) | error_tuple
+  @type result_tuple :: typed_result_tuple(any)
 
   @doc """
   Calls the next function only if we have an ok tuple. Otherwise we skip the call and
