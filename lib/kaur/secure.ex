@@ -1,10 +1,10 @@
 defmodule Kaur.Secure do
   @moduledoc """
-  Utilities to generate secure API Keys
+  Utilities to generate secure API Keys.
   """
 
-  @doc """
-  Generate a formatted String of length 24, using base 64 encoding.
+  @doc ~S"""
+  Generates a formatted String of length 24, using base 64 encoding.
 
   ## Examples
 

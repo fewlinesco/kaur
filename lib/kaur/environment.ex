@@ -3,13 +3,13 @@ defmodule Kaur.Environment do
   Utilities for working with configuration allowing environment variables.
 
   * `{:system, something}`: will load the environment variable stored in `something`
-  * `value`: will returns the value
+  * `value`: will return the value
   """
 
   alias Kaur.Result
 
-  @doc """
-  Read the value or environment variable for the `key` in `application`'s environment
+  @doc ~S"""
+  Reads the value or environment variable for the `key` in `application`'s environment.
 
   ### Examples
 
@@ -36,8 +36,8 @@ defmodule Kaur.Environment do
     |> Result.and_then(&load_environment_variable/1)
   end
 
-  @doc """
-  Read the value or environment variable for the `key` in `application`'s environment
+  @doc ~S"""
+  Reads the value or environment variable for the `key` in `application`'s environment.
 
   ### Examples
 
