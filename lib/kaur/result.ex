@@ -1,6 +1,6 @@
 defmodule Kaur.Result do
   @moduledoc """
-  Utilities for working with "result tuples"
+  Utilities for working with "result tuples".
 
   * `{:ok, value}`
   * `{:error, reason}`
@@ -10,9 +10,9 @@ defmodule Kaur.Result do
   @type error_tuple :: {:error, any}
   @type result_tuple :: ok_tuple | error_tuple
 
-  @doc """
-  Calls the next function only if we have an ok tuple. Otherwise we skip the call and
-  returns the error tuple
+  @doc ~S"""
+  Calls the next function only if it receives an ok tuple. Otherwise it skips the call and
+  returns the error tuple.
 
   ## Examples
 
@@ -28,19 +28,19 @@ defmodule Kaur.Result do
   def and_then({:ok, data}, function), do: function.(data)
   def and_then({:error, _} = error, _function), do: error
 
-  @doc """
-  Calls the first function if we have an error tuple, and the second one if we have an ok
+  @doc ~S"""
+  Calls the first function if it receives an error tuple, and the second one if it receives an ok
   tuple.
 
   ## Examples
 
-      iex> on_ok = fn x -> "X is \#{x}" end
-      ...> on_error = fn e -> "Error: \#{e}" end
+      iex> on_ok = fn x -> "X is #{x}" end
+      ...> on_error = fn e -> "Error: #{e}" end
       ...> 42 |> Kaur.Result.ok |> Kaur.Result.either(on_error, on_ok)
       "X is 42"
 
-      iex> on_ok = fn x -> "X is \#{x}" end
-      ...> on_error = fn e -> "Error: \#{e}" end
+      iex> on_ok = fn x -> "X is #{x}" end
+      ...> on_error = fn e -> "Error: #{e}" end
       ...> "oops" |> Kaur.Result.error |> Kaur.Result.either(on_error, on_ok)
       "Error: oops"
   """
@@ -48,8 +48,8 @@ defmodule Kaur.Result do
   def either({:ok, data}, _, on_ok), do: on_ok.(data)
   def either({:error, error}, on_error, _), do: on_error.(error)
 
-  @doc """
-  Create a new error result tuple
+  @doc ~S"""
+  Creates a new error result tuple.
 
   ## Examples
 
@@ -59,8 +59,8 @@ defmodule Kaur.Result do
   @spec error(any) :: error_tuple
   def error(value), do: {:error, value}
 
-  @doc """
-  Checks if a `result_tuple` is an error
+  @doc ~S"""
+  Checks if a `result_tuple` is an error.
 
   ## Examples
 
@@ -74,8 +74,8 @@ defmodule Kaur.Result do
   def error?({:error, _}), do: true
   def error?({:ok, _}), do: false
 
-  @doc """
-  Promotes any value to a result tuple. We excludes `nil` for the
+  @doc ~S"""
+  Promotes any value to a result tuple. It excludes `nil` for the
   ok tuples.
 
   ## Examples
@@ -90,7 +90,7 @@ defmodule Kaur.Result do
   def from_value(nil), do: error(:no_value)
   def from_value(value), do: ok(value)
 
-  @doc """
+  @doc ~S"""
   Converts an `Ok` value to an `Error` value if the `predicate` is not valid.
 
   ## Examples
@@ -114,9 +114,9 @@ defmodule Kaur.Result do
     if predicate.(value), do: ok, else: error(error_message)
   end
 
-  @doc """
-  Calls the next function only if we have an ok tuple. The function unwraps the value
-  from the tuple, call the next function and wrap it back into an ok tuple.
+  @doc ~S"""
+  Calls the next function only if it receives an ok tuple. The function unwraps the value
+  from the tuple, calls the next function and wraps it back into an ok tuple.
 
   ## Examples
 
@@ -132,9 +132,9 @@ defmodule Kaur.Result do
   def map({:ok, data}, function), do: ok(function.(data))
   def map({:error, _} = error, _function), do: error
 
-  @doc """
-  Calls the next function only if we have an error tuple. The function unwraps the value
-  from the tuple, call the next function and wrap it back into an error tuple.
+  @doc ~S"""
+  Calls the next function only if it receives an error tuple. The function unwraps the value
+  from the tuple, calls the next function and wraps it back into an error tuple.
 
   ## Examples
 
@@ -150,8 +150,8 @@ defmodule Kaur.Result do
   def map_error({:ok, _} = data, _function), do: data
   def map_error({:error, _} = error, function), do: or_else(error, fn x -> error(function.(x)) end)
 
-  @doc """
-  Create a new ok result tuple
+  @doc ~S"""
+  Creates a new ok result tuple.
 
   ## Examples
 
@@ -161,8 +161,8 @@ defmodule Kaur.Result do
   @spec ok(any) :: ok_tuple
   def ok(value), do: {:ok, value}
 
-  @doc """
-  Checks if a `result_tuple` is ok
+  @doc ~S"""
+  Checks if a `result_tuple` is ok.
 
   ## Examples
 
@@ -176,9 +176,43 @@ defmodule Kaur.Result do
   def ok?({:ok, _}), do: true
   def ok?({:error, _}), do: false
 
-  @doc """
-  Calls the next function only if we have an error tuple. Otherwise we skip the call and returns the ok tuple.
-  We expect the function to return a new result tuple.
+  @doc ~S"""
+  Calls the next function only if it receives an ok tuple but discards the result. It always returns
+  the original tuple.
+
+  ## Examples
+
+      iex> some_logging = fn x -> IO.puts "Success #{x}" end
+      ...> {:ok, 42} |> Kaur.Result.tap(some_logging)
+      {:ok, 42}
+
+      iex> some_logging = fn _ -> IO.puts "Not called logging" end
+      ...> {:error, "oops"} |> Kaur.Result.tap(some_logging)
+      {:error, "oops"}
+  """
+  @spec tap(result_tuple, (any -> any)) :: result_tuple
+  def tap(data, function), do: map(data, &Kaur.tap(&1, function))
+
+  @doc ~S"""
+  Calls the next function only if it receives an error tuple but discards the result. It always returns
+  the original tuple.
+
+  ## Examples
+
+    iex> some_logging = fn x -> IO.puts "Failed #{x}" end
+    ...> {:error, "oops"} |> Kaur.Result.tap_error(some_logging)
+    {:error, "oops"}
+
+    iex> some_logging = fn _ -> IO.puts "Not called logging" end
+    ...> {:ok, 42} |> Kaur.Result.tap_error(some_logging)
+    {:ok, 42}
+  """
+  @spec tap_error(result_tuple, (any -> any)) :: result_tuple
+  def tap_error(data, function), do: map_error(data, &Kaur.tap(&1, function))
+
+  @doc ~S"""
+  Calls the next function only if it receives an error tuple. Otherwise it skips the call and returns the
+  ok tuple. It expects the function to return a new result tuple.
 
   ## Examples
 
@@ -198,7 +232,7 @@ defmodule Kaur.Result do
   def or_else({:ok, _} = data, _function), do: data
   def or_else({:error, reason}, function), do: function.(reason)
 
-  @doc """
+  @doc ~S"""
   Converts an `Ok` value to an `Error` value if the `predicate` is valid.
 
   ## Examples
@@ -220,7 +254,7 @@ defmodule Kaur.Result do
     keep_if(result, &(not predicate.(&1)), error_message)
   end
 
-  @doc """
+  @doc ~S"""
   Transforms a list of result tuple to a result tuple containing either
   the first error tuple or an ok tuple containing the list of values.
 
@@ -240,9 +274,9 @@ defmodule Kaur.Result do
     end
   end
 
-  @doc """
-  Returns the content of an ok tuple if the value is correct. Otherwiser returns the
-  default value
+  @doc ~S"""
+  Returns the content of an ok tuple if the value is correct. Otherwise it returns the
+  default value.
 
   ### Examples
 
