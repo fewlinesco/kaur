@@ -13,7 +13,7 @@ A bunch of helper functions to ease the development of your applications.
 
 ```elixir
 def deps do
-  [{:kaur, "~> 1.0.0"}]
+  [{:kaur, "~> 1.1.0"}]
 end
 ```
 

@@ -15,7 +15,7 @@ defmodule Kaur.Mixfile do
      package: package(),
      source_url: @project_url,
      start_permanent: Mix.env == :prod,
-     version: "1.0.0"]
+     version: "1.1.0"]
   end
 
   def application do
