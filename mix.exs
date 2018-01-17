@@ -8,14 +8,14 @@ defmodule Kaur.Mixfile do
      build_embedded: Mix.env == :prod,
      deps: deps(),
      description: "A bunch of helper functions to ease the development of your applications",
-     docs: [main: "README", extras: ["README.md"]],
+     docs: [main: "readme", extras: ["README.md"]],
      elixir: "~> 1.2",
      homepage_url: @project_url,
      name: "Kaur",
      package: package(),
      source_url: @project_url,
      start_permanent: Mix.env == :prod,
-     version: "1.0.0"]
+     version: "1.1.0"]
   end
 
   def application do
