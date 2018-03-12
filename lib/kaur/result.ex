@@ -6,45 +6,87 @@ defmodule Kaur.Result do
   * `{:error, reason}`
   """
 
-  @type ok_tuple :: {:ok, any}
-  @type error_tuple :: {:error, any}
-  @type result_tuple :: ok_tuple | error_tuple
+  @type t(Error, Succeed) :: {:ok, Succeed} | {:error, Error}
 
   @doc ~S"""
-  Calls the next function only if it receives an ok tuple. Otherwise it skips the call and
-  returns the error tuple.
+  Calls the next function only if it receives an ok tuple. Otherwise it
+  skips the call and returns the error tuple.
 
   ## Examples
 
-      iex> business_logic = fn x -> Kaur.Result.ok(x * 2) end
-      ...> 21 |> Kaur.Result.ok |> Kaur.Result.and_then(business_logic)
+      iex> business_logic = fn(x) -> Result.ok(x * 2) end
+      ...> 21 |> Result.ok() |> Result.and_then(business_logic)
       {:ok, 42}
 
-      iex> business_logic = fn x -> Kaur.Result.ok(x * 2) end
-      ...> "oops" |> Kaur.Result.error |> Kaur.Result.and_then(business_logic)
+      iex> business_logic = fn(x) -> Result.ok(x * 2) end
+      ...> "oops" |> Result.error() |> Result.and_then(business_logic)
       {:error, "oops"}
   """
-  @spec and_then(result_tuple, (any -> result_tuple)) :: result_tuple
+  @spec and_then(
+          t(Error, Succeed),
+          (Succeed -> t(Error, NewSucceed))
+        ) :: t(Error, NewSucceed)
   def and_then({:ok, data}, function), do: function.(data)
   def and_then({:error, _} = error, _function), do: error
 
   @doc ~S"""
-  Calls the first function if it receives an error tuple, and the second one if it receives an ok
-  tuple.
+  Calls the next function only if it receives two ok tuples. Otherwise it skips
+  the call and returns the first error tuple.
 
   ## Examples
 
-      iex> on_ok = fn x -> "X is #{x}" end
-      ...> on_error = fn e -> "Error: #{e}" end
-      ...> 42 |> Kaur.Result.ok |> Kaur.Result.either(on_error, on_ok)
+      iex> business_logic = fn(x, y) -> Result.ok(x + y) end
+      ...> other_result = fn() -> Result.ok(10) end
+      ...> 12 |> Result.ok() |> Result.and_then(other_result, business_logic)
+      {:ok, 22}
+
+      iex> business_logic = fn(x, y) -> Result.ok(x + y) end
+      ...> result = Result.error("oops")
+      ...> other_result = fn() -> Result.ok(10) end
+      ...> result |> Result.and_then(other_result, business_logic)
+      {:error, "oops"}
+
+      iex> business_logic = fn(x, y) -> Result.ok(x + y) end
+      ...> other_result = fn() -> Result.error("oops") end
+      ...> 12 |> Result.ok() |> Result.and_then(other_result, business_logic)
+      {:error, "oops"}
+
+      iex> business_logic = fn(x, y) -> Result.ok(x + y) end
+      ...> result = Result.error("oops1")
+      ...> other_result = fn() -> Result.error("oops2") end
+      ...> result |> Result.and_then(other_result, business_logic)
+      {:error, "oops1"}
+  """
+  @spec and_then(
+          t(Error, Succeed),
+          (() -> t(OtherError, OtherSucceed)),
+          (Succeed, OtherSucceed -> t(NewError, NewSucceed))
+        ) :: t(NewError, NewSucceed)
+  def and_then(result_a, delayed_result_b, f) do
+    result_a
+    |> and_then(fn x ->
+      delayed_result_b.()
+      |> and_then(&f.(x, &1))
+    end)
+  end
+
+  @doc ~S"""
+  Calls the first function if it receives an error tuple, and the second one if
+  it receives an ok tuple.
+
+  ## Examples
+
+      iex> on_ok = fn(x) -> "X is #{x}" end
+      ...> on_error = fn(e) -> "Error: #{e}" end
+      ...> 42 |> Result.ok() |> Result.either(on_error, on_ok)
       "X is 42"
 
-      iex> on_ok = fn x -> "X is #{x}" end
-      ...> on_error = fn e -> "Error: #{e}" end
-      ...> "oops" |> Kaur.Result.error |> Kaur.Result.either(on_error, on_ok)
+      iex> on_ok = fn(x) -> "X is #{x}" end
+      ...> on_error = fn(e) -> "Error: #{e}" end
+      ...> "oops" |> Result.error() |> Result.either(on_error, on_ok)
       "Error: oops"
   """
-  @spec either(result_tuple, (any -> any), (any -> any)) :: any
+  @spec either(t(Error, Succeed), (Error -> any), (Succeed -> any)) :: any
   def either({:ok, data}, _, on_ok), do: on_ok.(data)
   def either({:error, error}, on_error, _), do: on_error.(error)
 
@@ -53,10 +95,10 @@ defmodule Kaur.Result do
 
   ## Examples
 
-      iex> Kaur.Result.error("oops")
+      iex> Result.error("oops")
       {:error, "oops"}
   """
-  @spec error(any) :: error_tuple
+  @spec error(Error) :: t(Error, Succeed)
   def error(value), do: {:error, value}
 
   @doc ~S"""
@@ -64,13 +106,13 @@ defmodule Kaur.Result do
 
   ## Examples
 
-      iex> 1 |> Kaur.Result.ok |> Kaur.Result.error?
+      iex> 1 |> Result.ok() |> Result.error?
       false
 
-      iex> 2 |>Kaur.Result.error |> Kaur.Result.error?
+      iex> 2 |>Result.error() |> Result.error?
       true
   """
-  @spec error?(result_tuple) :: boolean
+  @spec error?(t(Error, Succeed)) :: boolean
   def error?({:error, _}), do: true
   def error?({:ok, _}), do: false
 
@@ -80,16 +122,19 @@ defmodule Kaur.Result do
 
   ## Examples
 
-      iex> Kaur.Result.from_value(nil)
+      iex> Result.from_value(nil)
       {:error, :no_value}
 
-      iex> Kaur.Result.from_value(nil, :not_found)
+      iex> Result.from_value(nil, :not_found)
       {:error, :not_found}
 
-      iex> Kaur.Result.from_value(42)
+      iex> Result.from_value(42)
       {:ok, 42}
   """
-  @spec from_value(any) :: result_tuple
+  @spec from_value(
+          nil | Succeed,
+          Error | :no_value
+        ) :: t(Error | :no_value, Succeed)
   def from_value(value, on_nil_value \\ :no_value)
   def from_value(nil, on_nil_value), do: error(on_nil_value)
   def from_value(value, _on_nil_value), do: ok(value)
@@ -99,70 +144,112 @@ defmodule Kaur.Result do
 
   ## Examples
 
-      iex> res = Kaur.Result.ok(10)
-      ...> Kaur.Result.keep_if(res, &(&1 > 5))
+      iex> res = Result.ok(10)
+      ...> Result.keep_if(res, &(&1 > 5))
       {:ok, 10}
 
-      iex> res = Kaur.Result.ok(10)
-      ...> Kaur.Result.keep_if(res, &(&1 > 10), "must be > of 10")
+      iex> res = Result.ok(10)
+      ...> Result.keep_if(res, &(&1 > 10), "must be > of 10")
       {:error, "must be > of 10"}
 
-      iex> res = Kaur.Result.error(:no_value)
-      ...> Kaur.Result.keep_if(res, &(&1 > 10), "must be > of 10")
+      iex> res = Result.error(:no_value)
+      ...> Result.keep_if(res, &(&1 > 10), "must be > of 10")
       {:error, :no_value}
   """
-  @spec keep_if(result_tuple, (any -> boolean), any) :: result_tuple
+  @spec keep_if(
+          t(Error, Succeed),
+          (Succeed -> boolean),
+          NewError | :invalid
+        ) :: t(Error | NewError | :invalid, Succeed)
   def keep_if(result, predicate, error_message \\ :invalid)
   def keep_if({:error, _} = error, _predicate, _error_message), do: error
+
   def keep_if({:ok, value} = ok, predicate, error_message) do
     if predicate.(value), do: ok, else: error(error_message)
   end
 
   @doc ~S"""
-  Calls the next function only if it receives an ok tuple. The function unwraps the value
-  from the tuple, calls the next function and wraps it back into an ok tuple.
+  Calls the next function only if it receives an ok tuple. The function unwraps
+  the value from the tuple, calls the next function and wraps it back into an
+  ok tuple.
 
   ## Examples
 
-      iex> business_logic = fn x -> x * 2 end
-      ...> 21 |> Kaur.Result.ok |> Kaur.Result.map(business_logic)
+      iex> business_logic = fn(x) -> x * 2 end
+      ...> 21 |> Result.ok() |> Result.map(business_logic)
       {:ok, 42}
 
-      iex> business_logic = fn x -> x * 2 end
-      ...> "oops" |> Kaur.Result.error |> Kaur.Result.map(business_logic)
+      iex> business_logic = fn(x) -> x * 2 end
+      ...> "oops" |> Result.error() |> Result.map(business_logic)
       {:error, "oops"}
   """
-  @spec map(result_tuple, (any -> any)) :: result_tuple
+  @spec map(t(Error, Succeed), (Succeed -> NewSucceed)) :: t(NewSucceed, Error)
   def map({:ok, data}, function), do: ok(function.(data))
   def map({:error, _} = error, _function), do: error
 
   @doc ~S"""
-  Calls the next function only if it receives an error tuple. The function unwraps the value
-  from the tuple, calls the next function and wraps it back into an error tuple.
+  Calls the next function only if it receives two ok tuple. The function
+  unwraps the value from the tuple, calls the next function and wraps it back
+  into an ok tuple.
 
   ## Examples
 
-      iex> better_error = fn _ -> "A better error message" end
-      ...> 42 |> Kaur.Result.ok |> Kaur.Result.map_error(better_error)
+      iex> business_logic = fn(x, y) -> x * y end
+      ...> result = Result.ok(21)
+      ...> result |> Result.map(fn() -> {:ok, 10} end, business_logic)
+      {:ok, 210}
+
+      iex> business_logic = fn(x, y) -> x * y end
+      ...> result = Result.error("oops")
+      ...> result |> Result.map(fn() -> {:ok, 10} end, business_logic)
+      {:error, "oops"}
+  """
+  @spec map(
+          t(Error, Succeed),
+          (() -> t(OtherError, OtherSucceed)),
+          (Succeed, OtherSucceed -> t(Error | OtherError, NewSucceed))
+        ) :: t(Error | OtherError, NewSucceed)
+  def map(result_a, delayed_result_b, function) do
+    result_a
+    |> and_then(fn x ->
+      delayed_result_b.()
+      |> map(&function.(x, &1))
+    end)
+  end
+
+  @doc ~S"""
+  Calls the next function only if it receives an error tuple. The function
+  unwraps the value from the tuple, calls the next function and wraps it back
+  into an error tuple.
+
+  ## Examples
+
+      iex> better_error = fn(_) -> "A better error message" end
+      ...> 42 |> Result.ok() |> Result.map_error(better_error)
       {:ok, 42}
 
-      iex> better_error = fn _ -> "A better error message" end
-      ...> "oops" |> Kaur.Result.error |> Kaur.Result.map_error(better_error)
+      iex> better_error = fn(_) -> "A better error message" end
+      ...> "oops" |> Result.error() |> Result.map_error(better_error)
       {:error, "A better error message"}
   """
-  @spec map_error(result_tuple, (any -> any)) :: result_tuple
+  @spec map_error(
+          t(Error, Succeed),
+          (Error -> NewError)
+        ) :: t(NewError, Succeed)
   def map_error({:ok, _} = data, _function), do: data
-  def map_error({:error, _} = error, function), do: or_else(error, fn x -> error(function.(x)) end)
+
+  def map_error({:error, _} = error, function),
+    do: or_else(error, fn x -> error(function.(x)) end)
 
   @doc ~S"""
   Creates a new ok result tuple.
 
   ## Examples
 
-      iex> Kaur.Result.ok(42)
+      iex> Result.ok(42)
       {:ok, 42}
   """
-  @spec ok(any) :: ok_tuple
+  @spec ok(Succeed) :: t(Error, Succeed)
   def ok(value), do: {:ok, value}
 
   @doc ~S"""
@@ -170,90 +257,103 @@ defmodule Kaur.Result do
 
   ## Examples
 
-      iex> 1 |> Kaur.Result.ok |> Kaur.Result.ok?
+      iex> 1 |> Result.ok() |> Result.ok?
       true
 
-      iex> 2 |> Kaur.Result.error |>Kaur.Result.ok?
+      iex> 2 |> Result.error() |>Result.ok?
       false
   """
-  @spec ok?(result_tuple) :: boolean
+  @spec ok?(t(Error, Succeed)) :: boolean
   def ok?({:ok, _}), do: true
   def ok?({:error, _}), do: false
 
   @doc ~S"""
-  Calls the next function only if it receives an ok tuple but discards the result. It always returns
-  the original tuple.
+  Calls the next function only if it receives an error tuple. Otherwise it
+  skips the call and returns the ok tuple. It expects the function to return a
+  new result tuple.
 
   ## Examples
 
-      iex> some_logging = fn x -> IO.puts "Success #{x}" end
-      ...> {:ok, 42} |> Kaur.Result.tap(some_logging)
+      iex> business_logic = fn(_) -> {:error, "a better error message"} end
+      ...> {:ok, 42} |> Result.or_else(business_logic)
       {:ok, 42}
 
-      iex> some_logging = fn _ -> IO.puts "Not called logging" end
-      ...> {:error, "oops"} |> Kaur.Result.tap(some_logging)
-      {:error, "oops"}
-  """
-  @spec tap(result_tuple, (any -> any)) :: result_tuple
-  def tap(data, function), do: map(data, &Kaur.tap(&1, function))
-
-  @doc ~S"""
-  Calls the next function only if it receives an error tuple but discards the result. It always returns
-  the original tuple.
-
-  ## Examples
-
-    iex> some_logging = fn x -> IO.puts "Failed #{x}" end
-    ...> {:error, "oops"} |> Kaur.Result.tap_error(some_logging)
-    {:error, "oops"}
-
-    iex> some_logging = fn _ -> IO.puts "Not called logging" end
-    ...> {:ok, 42} |> Kaur.Result.tap_error(some_logging)
-    {:ok, 42}
-  """
-  @spec tap_error(result_tuple, (any -> any)) :: result_tuple
-  def tap_error(data, function), do: map_error(data, &Kaur.tap(&1, function))
-
-  @doc ~S"""
-  Calls the next function only if it receives an error tuple. Otherwise it skips the call and returns the
-  ok tuple. It expects the function to return a new result tuple.
-
-  ## Examples
-
-      iex> business_logic = fn _ -> {:error, "a better error message"} end
-      ...> {:ok, 42} |> Kaur.Result.or_else(business_logic)
-      {:ok, 42}
-
-      iex> business_logic = fn _ -> {:error, "a better error message"} end
-      ...> {:error, "oops"} |> Kaur.Result.or_else(business_logic)
+      iex> business_logic = fn(_) -> {:error, "a better error message"} end
+      ...> {:error, "oops"} |> Result.or_else(business_logic)
       {:error, "a better error message"}
 
-      iex> default_value = fn _ -> {:ok, []} end
-      ...> {:error, "oops"} |> Kaur.Result.or_else(default_value)
+      iex> default_value = fn(_) -> {:ok, []} end
+      ...> {:error, "oops"} |> Result.or_else(default_value)
       {:ok, []}
   """
-  @spec or_else(result_tuple, (any -> result_tuple)) :: result_tuple
+  @spec or_else(t(Error, Succeed), (Error -> t(NewError, NewSucceed))) ::
+          t(Succeed | NewSucceed, Error | NewError)
   def or_else({:ok, _} = data, _function), do: data
   def or_else({:error, reason}, function), do: function.(reason)
+
+  @doc ~S"""
+  Calls the next function only if it receives two error tuple. Otherwise it
+  skips the call and returns the first ok tuple. It expects the function to
+  return a new result tuple.
+
+  ## Examples
+
+      iex> business_logic = fn(_, _) -> {:error, "a better error message"} end
+      ...> result = Result.ok(42)
+      ...> other_result = fn() -> Result.error("oops") end
+      ...> result |> Result.or_else(other_result, business_logic)
+      {:ok, 42}
+
+      iex> business_logic = fn(a, b) -> Result.error({a, b}) end
+      ...> result = Result.error("oops")
+      ...> other_result = fn() -> Result.error("oops2") end
+      ...> result |> Result.or_else(other_result, business_logic)
+      {:error, {"oops", "oops2"}}
+
+      iex> default_value = fn(_, _) -> Result.ok([]) end
+      ...> result = Result.error("oops")
+      ...> other_result = fn() -> Result.ok(10) end
+      ...> result |> Result.or_else(other_result, default_value)
+      {:ok, 10}
+  """
+  @spec or_else(
+          t(Error, Succeed),
+          (() -> t(OtherError, OtherSucceed)),
+          (Error, OtherError -> t(NewError, NewSucceed))
+        ) ::
+          t(Error, Succeed)
+          | t(OtherError, OtherSucceed)
+          | t(NewError, NewSucceed)
+  def or_else(result_a, delayed_result_b, function) do
+    result_a
+    |> or_else(fn x ->
+      delayed_result_b.()
+      |> or_else(&function.(x, &1))
+    end)
+  end
 
   @doc ~S"""
   Converts an `Ok` value to an `Error` value if the `predicate` is valid.
 
   ## Examples
 
-      iex> res = Kaur.Result.ok([])
-      ...> Kaur.Result.reject_if(res, &Enum.empty?/1)
+      iex> res = Result.ok([])
+      ...> Result.reject_if(res, &Enum.empty?/1)
       {:error, :invalid}
 
-      iex> res = Kaur.Result.ok([1])
-      ...> Kaur.Result.reject_if(res, &Enum.empty?/1)
+      iex> res = Result.ok([1])
+      ...> Result.reject_if(res, &Enum.empty?/1)
       {:ok, [1]}
 
-      iex> res = Kaur.Result.ok([])
-      ...> Kaur.Result.reject_if(res, &Enum.empty?/1, "list cannot be empty")
+      iex> res = Result.ok([])
+      ...> Result.reject_if(res, &Enum.empty?/1, "list cannot be empty")
       {:error, "list cannot be empty"}
   """
-  @spec reject_if(result_tuple, (any -> boolean), any) :: result_tuple
+  @spec reject_if(
+          t(Error, Succeed),
+          (Succeed -> boolean),
+          NewError | :invalid
+        ) :: t(Error | NewError | :invalid, Succeed)
   def reject_if(result, predicate, error_message \\ :invalid) do
     keep_if(result, &(not predicate.(&1)), error_message)
   end
@@ -264,35 +364,90 @@ defmodule Kaur.Result do
 
   ### Examples
 
-      iex> Kaur.Result.sequence([Kaur.Result.ok(42), Kaur.Result.ok(1337)])
+      iex> Result.sequence([Result.ok(42), Result.ok(1337)])
       {:ok, [42, 1337]}
 
-      iex> Kaur.Result.sequence([Kaur.Result.ok(42), Kaur.Result.error("oops"), Kaur.Result.ok(1337)])
+      iex> Result.sequence([Result.ok(42), Result.error("oops"), Result.ok(1)])
       {:error, "oops"}
   """
-  @spec sequence([result_tuple]) :: ({:ok, [any()]}|{:error, any()})
+  @spec sequence([t(any, any)]) :: t(any, any)
   def sequence(list) do
     case Enum.reduce_while(list, [], &do_sequence/2) do
       {:error, _} = error -> error
-      result -> ok(Enum.reverse result)
+      result -> ok(Enum.reverse(result))
     end
   end
 
   @doc ~S"""
-  Returns the content of an ok tuple if the value is correct. Otherwise it returns the
-  default value.
+  Calls the next function only if it receives an ok tuple but discards the
+  result. It always returns the original tuple.
+
+  ## Examples
+
+      iex> some_logging = fn(x) -> IO.puts "Success #{x}" end
+      ...> {:ok, 42} |> Result.tap(some_logging)
+      {:ok, 42}
+
+      iex> some_logging = fn(_) -> IO.puts "Not called logging" end
+      ...> {:error, "oops"} |> Result.tap(some_logging)
+      {:error, "oops"}
+  """
+  @spec tap(t(Error, Succeed), (Succeed -> any)) :: t(Error, Succeed)
+  def tap(data, function), do: map(data, &Kaur.tap(&1, function))
+
+  @doc ~S"""
+  Calls the next function only if it receives an error tuple but discards the
+  result. It always returns the original tuple.
+
+  ## Examples
+
+    iex> some_logging = fn(x) -> IO.puts "Failed #{x}" end
+    ...> {:error, "oops"} |> Result.tap_error(some_logging)
+    {:error, "oops"}
+
+    iex> some_logging = fn(_) -> IO.puts "Not called logging" end
+    ...> {:ok, 42} |> Result.tap_error(some_logging)
+    {:ok, 42}
+  """
+  @spec tap_error(t(Error, Succeed), (Error -> any)) :: t(Error, Succeed)
+  def tap_error(data, function), do: map_error(data, &Kaur.tap(&1, function))
+
+  @doc ~S"""
+  Returns the content of an ok tuple if the value is correct. Otherwise it
+  returns the default value.
 
   ### Examples
 
-      iex> 42 |> Kaur.Result.ok |> Kaur.Result.with_default(1337)
+      iex> 42 |> Result.ok() |> Result.with_default(1337)
       42
 
-      iex> "oops" |> Kaur.Result.error |> Kaur.Result.with_default(1337)
+      iex> "oops" |> Result.error() |> Result.with_default(1337)
       1337
   """
-  @spec with_default(result_tuple, any) :: any
+  @spec with_default(t(Error, Succeed), NewSucceed) :: Succeed | NewSucceed
   def with_default({:ok, data}, _default_data), do: data
   def with_default({:error, _}, default_data), do: default_data
+
+  @doc ~S"""
+  Wraps the argument in a `result_tuple`.
+
+  If the argument is already a `result_tuple`, returns the `result_tuple`.
+
+  ### Examples
+
+      iex> 42 |> Result.ok() |> Result.wrap()
+      {:ok, 42}
+
+      iex> 42 |> Result.wrap()
+      {:ok, 42}
+
+      iex> "oops" |> Result.error() |> Result.wrap()
+      {:error, "oops"}
+  """
+  @spec wrap(any) :: t(any, any)
+  def wrap({:ok, _} = value), do: value
+  def wrap({:error, _} = value), do: value
+  def wrap(value), do: ok(value)
 
   defp do_sequence(element, elements) do
     case element do
