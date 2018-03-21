@@ -83,12 +83,16 @@ defmodule Kaur.Result do
       iex> Kaur.Result.from_value(nil)
       {:error, :no_value}
 
+      iex> Kaur.Result.from_value(nil, :not_found)
+      {:error, :not_found}
+
       iex> Kaur.Result.from_value(42)
       {:ok, 42}
   """
   @spec from_value(any) :: result_tuple
-  def from_value(nil), do: error(:no_value)
-  def from_value(value), do: ok(value)
+  def from_value(value, on_nil_value \\ :no_value)
+  def from_value(nil, on_nil_value), do: error(on_nil_value)
+  def from_value(value, _on_nil_value), do: ok(value)
 
   @doc ~S"""
   Converts an `Ok` value to an `Error` value if the `predicate` is not valid.
