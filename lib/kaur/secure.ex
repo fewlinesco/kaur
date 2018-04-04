@@ -8,10 +8,10 @@ defmodule Kaur.Secure do
 
   ## Examples
 
-    iex> Kaur.Secure.generate_api_key
+    iex> Kaur.Secure.generate_api_key()
     "tEhdf77Pr8BDjRc9JMKGzQ=="
   """
-  @spec generate_api_key :: String.t
+  @spec generate_api_key :: String.t()
   def generate_api_key do
     Base.url_encode64(random_bytes())
   end
