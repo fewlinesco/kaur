@@ -4,7 +4,7 @@ defmodule Kaur.ResultTest do
   import ExUnit.CaptureIO
   alias Kaur.Result
 
-  doctest Kaur.Result
+  doctest Result
 
   test "tap: calls the function and returns original data" do
     original = Result.ok("World")
