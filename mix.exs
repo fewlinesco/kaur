@@ -11,6 +11,7 @@ defmodule Kaur.Mixfile do
       description: "A bunch of helper functions to ease the development of your applications",
       docs: [main: "readme", extras: ["README.md"]],
       elixir: "~> 1.4",
+      elixirc_paths: elixirc_paths(Mix.env()),
       homepage_url: @project_url,
       name: "Kaur",
       package: package(),
@@ -39,6 +40,9 @@ defmodule Kaur.Mixfile do
   defp dialyzer do
     [verbose: true, flags: [:error_handling, :race_conditions]]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp package do
     [
