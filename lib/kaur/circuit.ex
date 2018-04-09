@@ -204,7 +204,7 @@ defmodule Kaur.Circuit do
   Defines the result of a step.
 
   - `{:cont, next_step, new_state}` : go the next step (and update the state)
-  - `{:halt, final_state}` : interrupts the conveyor
+  - `{:halt, final_state}` : interrupts the circuit
   """
   @type step_result ::
           {:halt, any}
@@ -305,17 +305,17 @@ defmodule Kaur.Circuit do
       {:ok, 6}
   """
   @spec run(any, t) :: Result.t(error, any)
-  def run(input, conveyor) do
-    conveyor.first_step
-    |> process_run(input, conveyor)
+  def run(input, circuit) do
+    circuit.first_step
+    |> process_run(input, circuit)
   end
 
   defp check_fun({_, fun} = step) when is_function(fun, 1) do
     step
   end
 
-  defp process_run(step, state, conveyor) do
-    case Map.fetch(conveyor.vertices, step) do
+  defp process_run(step, state, circuit) do
+    case Map.fetch(circuit.vertices, step) do
       :error ->
         Result.error({:invalid_step, step, state})
 
@@ -325,7 +325,7 @@ defmodule Kaur.Circuit do
             Result.ok(new_state)
 
           {:cont, new_step, new_state} ->
-            process_run(new_step, new_state, conveyor)
+            process_run(new_step, new_state, circuit)
         end
     end
   end
