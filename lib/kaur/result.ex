@@ -6,7 +6,7 @@ defmodule Kaur.Result do
   * `{:error, reason}`
   """
 
-  @type t(Error, Succeed) :: {:ok, Succeed} | {:error, Error}
+  @type t(error, success) :: {:ok, success} | {:error, error}
 
   @doc ~S"""
   Calls the next function only if it receives an ok tuple. Otherwise it
@@ -23,9 +23,12 @@ defmodule Kaur.Result do
       {:error, "oops"}
   """
   @spec and_then(
-          t(Error, Succeed),
-          (Succeed -> t(Error, NewSucceed))
-        ) :: t(Error, NewSucceed)
+          t(error, success),
+          (success -> t(error, newSuccess))
+        ) :: t(error, newSuccess)
+        when error: var,
+             success: var,
+             newSuccess: var
   def and_then({:ok, data}, function), do: function.(data)
   def and_then({:error, _} = error, _function), do: error
 
@@ -58,10 +61,16 @@ defmodule Kaur.Result do
       {:error, "oops1"}
   """
   @spec and_then(
-          t(Error, Succeed),
-          (() -> t(OtherError, OtherSucceed)),
-          (Succeed, OtherSucceed -> t(NewError, NewSucceed))
-        ) :: t(NewError, NewSucceed)
+          t(error, success),
+          (() -> t(otherError, otherSuccess)),
+          (success, otherSuccess -> t(newError, newSuccess))
+        ) :: t(error | otherError | newError, newSuccess)
+        when success: var,
+             newSuccess: var,
+             otherSuccess: var,
+             error: var,
+             otherError: var,
+             newError: var
   def and_then(result_a, delayed_result_b, f) do
     result_a
     |> and_then(fn x ->
@@ -86,7 +95,12 @@ defmodule Kaur.Result do
       ...> "oops" |> Result.error() |> Result.either(on_error, on_ok)
       "Error: oops"
   """
-  @spec either(t(Error, Succeed), (Error -> any), (Succeed -> any)) :: any
+  @spec either(
+          t(error, success),
+          (error -> any),
+          (success -> any)
+        ) :: any
+        when error: var, success: var
   def either({:ok, data}, _, on_ok), do: on_ok.(data)
   def either({:error, error}, on_error, _), do: on_error.(error)
 
@@ -98,7 +112,7 @@ defmodule Kaur.Result do
       iex> Result.error("oops")
       {:error, "oops"}
   """
-  @spec error(Error) :: t(Error, Succeed)
+  @spec error(error) :: t(error, any) when error: var
   def error(value), do: {:error, value}
 
   @doc ~S"""
@@ -112,7 +126,7 @@ defmodule Kaur.Result do
       iex> 2 |>Result.error() |> Result.error?
       true
   """
-  @spec error?(t(Error, Succeed)) :: boolean
+  @spec error?(t(any, any)) :: boolean
   def error?({:error, _}), do: true
   def error?({:ok, _}), do: false
 
@@ -132,9 +146,11 @@ defmodule Kaur.Result do
       {:ok, 42}
   """
   @spec from_value(
-          nil | Succeed,
-          Error | :no_value
-        ) :: t(Error | :no_value, Succeed)
+          nil | success,
+          error | :no_value
+        ) :: t(error | :no_value, success)
+        when success: var,
+             error: var
   def from_value(value, on_nil_value \\ :no_value)
   def from_value(nil, on_nil_value), do: error(on_nil_value)
   def from_value(value, _on_nil_value), do: ok(value)
@@ -157,10 +173,14 @@ defmodule Kaur.Result do
       {:error, :no_value}
   """
   @spec keep_if(
-          t(Error, Succeed),
-          (Succeed -> boolean),
-          NewError | :invalid
-        ) :: t(Error | NewError | :invalid, Succeed)
+          t(error, success),
+          (success -> boolean),
+          newError | :invalid
+        ) :: t(error | newError | :invalid, success)
+        when success: var,
+             error: var,
+             newError: var,
+             newSuccess: var
   def keep_if(result, predicate, error_message \\ :invalid)
   def keep_if({:error, _} = error, _predicate, _error_message), do: error
 
@@ -183,7 +203,14 @@ defmodule Kaur.Result do
       ...> "oops" |> Result.error() |> Result.map(business_logic)
       {:error, "oops"}
   """
-  @spec map(t(Error, Succeed), (Succeed -> NewSucceed)) :: t(NewSucceed, Error)
+  @spec map(
+          t(error, success),
+          (success -> newSuccess)
+        ) :: t(newSuccess, error)
+        when success: var,
+             error: var,
+             newError: var,
+             newSuccess: var
   def map({:ok, data}, function), do: ok(function.(data))
   def map({:error, _} = error, _function), do: error
 
@@ -205,10 +232,15 @@ defmodule Kaur.Result do
       {:error, "oops"}
   """
   @spec map(
-          t(Error, Succeed),
-          (() -> t(OtherError, OtherSucceed)),
-          (Succeed, OtherSucceed -> t(Error | OtherError, NewSucceed))
-        ) :: t(Error | OtherError, NewSucceed)
+          t(error, success),
+          (() -> t(otherError, otherSuccess)),
+          (success, otherSuccess -> t(error | otherError, newSuccess))
+        ) :: t(error | otherError, newSuccess)
+        when success: var,
+             error: var,
+             otherError: var,
+             otherSuccess: var,
+             newSuccess: var
   def map(result_a, delayed_result_b, function) do
     result_a
     |> and_then(fn x ->
@@ -233,9 +265,12 @@ defmodule Kaur.Result do
       {:error, "A better error message"}
   """
   @spec map_error(
-          t(Error, Succeed),
-          (Error -> NewError)
-        ) :: t(NewError, Succeed)
+          t(error, success),
+          (error -> newError)
+        ) :: t(newError, success)
+        when success: var,
+             error: var,
+             newError: var
   def map_error({:ok, _} = data, _function), do: data
 
   def map_error({:error, _} = error, function),
@@ -249,7 +284,7 @@ defmodule Kaur.Result do
       iex> Result.ok(42)
       {:ok, 42}
   """
-  @spec ok(Succeed) :: t(Error, Succeed)
+  @spec ok(success) :: t(any, success) when success: var
   def ok(value), do: {:ok, value}
 
   @doc ~S"""
@@ -263,7 +298,7 @@ defmodule Kaur.Result do
       iex> 2 |> Result.error() |>Result.ok?
       false
   """
-  @spec ok?(t(Error, Succeed)) :: boolean
+  @spec ok?(t(any, any)) :: boolean
   def ok?({:ok, _}), do: true
   def ok?({:error, _}), do: false
 
@@ -286,8 +321,14 @@ defmodule Kaur.Result do
       ...> {:error, "oops"} |> Result.or_else(default_value)
       {:ok, []}
   """
-  @spec or_else(t(Error, Succeed), (Error -> t(NewError, NewSucceed))) ::
-          t(Succeed | NewSucceed, Error | NewError)
+  @spec or_else(
+          t(error, success),
+          (error -> t(newError, newSuccess))
+        ) :: t(success | newSuccess, error | newError)
+        when success: var,
+             error: var,
+             newError: var,
+             newSuccess: var
   def or_else({:ok, _} = data, _function), do: data
   def or_else({:error, reason}, function), do: function.(reason)
 
@@ -317,13 +358,19 @@ defmodule Kaur.Result do
       {:ok, 10}
   """
   @spec or_else(
-          t(Error, Succeed),
-          (() -> t(OtherError, OtherSucceed)),
-          (Error, OtherError -> t(NewError, NewSucceed))
+          t(error, success),
+          (() -> t(otherError, otherSuccess)),
+          (error, otherError -> t(newError, newSuccess))
         ) ::
-          t(Error, Succeed)
-          | t(OtherError, OtherSucceed)
-          | t(NewError, NewSucceed)
+          t(error, success)
+          | t(otherError, otherSuccess)
+          | t(newError, newSuccess)
+        when success: var,
+             error: var,
+             newError: var,
+             otherError: var,
+             otherSuccess: var,
+             newSuccess: var
   def or_else(result_a, delayed_result_b, function) do
     result_a
     |> or_else(fn x ->
@@ -350,10 +397,13 @@ defmodule Kaur.Result do
       {:error, "list cannot be empty"}
   """
   @spec reject_if(
-          t(Error, Succeed),
-          (Succeed -> boolean),
-          NewError | :invalid
-        ) :: t(Error | NewError | :invalid, Succeed)
+          t(error, success),
+          (success -> boolean),
+          newError | :invalid
+        ) :: t(error | newError | :invalid, success)
+        when success: var,
+             error: var,
+             newError: var
   def reject_if(result, predicate, error_message \\ :invalid) do
     keep_if(result, &(not predicate.(&1)), error_message)
   end
@@ -392,7 +442,11 @@ defmodule Kaur.Result do
       ...> {:error, "oops"} |> Result.tap(some_logging)
       {:error, "oops"}
   """
-  @spec tap(t(Error, Succeed), (Succeed -> any)) :: t(Error, Succeed)
+  @spec tap(
+          t(error, success),
+          (success -> any)
+        ) :: t(error, success)
+        when success: var, error: var
   def tap(data, function), do: map(data, &Kaur.tap(&1, function))
 
   @doc ~S"""
@@ -409,7 +463,11 @@ defmodule Kaur.Result do
     ...> {:ok, 42} |> Result.tap_error(some_logging)
     {:ok, 42}
   """
-  @spec tap_error(t(Error, Succeed), (Error -> any)) :: t(Error, Succeed)
+  @spec tap_error(
+          t(error, success),
+          (error -> any)
+        ) :: t(error, success)
+        when success: var, error: var
   def tap_error(data, function), do: map_error(data, &Kaur.tap(&1, function))
 
   @doc ~S"""
@@ -424,7 +482,11 @@ defmodule Kaur.Result do
       iex> "oops" |> Result.error() |> Result.with_default(1337)
       1337
   """
-  @spec with_default(t(Error, Succeed), NewSucceed) :: Succeed | NewSucceed
+  @spec with_default(
+          t(any, success),
+          newSuccess
+        ) :: success | newSuccess
+        when success: var, newSuccess: var
   def with_default({:ok, data}, _default_data), do: data
   def with_default({:error, _}, default_data), do: default_data
 
