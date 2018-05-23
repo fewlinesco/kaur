@@ -101,7 +101,7 @@ iex> MyModule.rent_a_car %Person{name: "Jane", age: 42, bonus: 0.9}
 {:ok, "Welcome Jane, you can rent a car"}
 
 iex> MyModule.rent_a_car %Person{name: "John", age: 42, bonus: 0.5}
-{:error, Sorry John, but you need a bonus of 0.8 but have only 0.5."}
+{:error, "Sorry John, but you need a bonus of 0.8 but have only 0.5."}
 
 iex> MyModule.rent_a_car %Person{name: "Robert", age: 11, bonus: 0.9}
 {:error, "Sorry Robert, but you need to be older than 21"}
