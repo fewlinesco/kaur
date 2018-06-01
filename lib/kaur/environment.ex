@@ -1,6 +1,6 @@
 defmodule Kaur.Environment do
   @moduledoc """
-  **This module is deprecated and will be no longer maintained**
+  **This module is deprecated and will no longer be maintained**
 
   Utilities for working with configuration allowing environment variables.
 
@@ -30,7 +30,7 @@ defmodule Kaur.Environment do
       iex> Kaur.Environment.read(:my_app, :something_else)
       {:error, :no_value}
   """
-  @deprecated "Kaur.Environment is deprecated and will be no longer maintained"
+  @deprecated "Kaur.Environment is deprecated and will no longer be maintained"
   @spec read(:atom, :atom) :: Result.t(any, any)
   def read(application, key) do
     application
@@ -59,7 +59,7 @@ defmodule Kaur.Environment do
       iex> Kaur.Environment.read(:my_app, :something_else)
       {:error, :no_value}
   """
-  @deprecated "Kaur.Environment is deprecated and will be no longer maintained"
+  @deprecated "Kaur.Environment is deprecated and will no longer be maintained"
   @spec read(:atom, :atom, [:atom]) :: Result.t(any, any)
   def read(application, key, sub_keys) do
     application
